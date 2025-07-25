@@ -63,4 +63,20 @@ public:
 		}
 		return static_cast<double>(correct) / testData.size();
 	}
+
+	std::unordered_map<int, double> computeFeatureImportances() {
+		std::unordered_map<int, double> total;
+		for (const auto& tree : trees) {
+			auto imp = tree.getFeatureImportance();
+			for (auto& [feature, score] : imp) {
+				total[feature] += score;
+			}
+		}
+		double sum = 0;
+		for (auto& [_, score] : total) sum += score;
+		if (sum > 0) {
+			for (auto& [_, score] : total) score /= sum;
+		}
+		return total;
+	}
 };

@@ -1,5 +1,6 @@
 #include "RandomForest.h"
 #include <fstream>
+#include <iomanip>
 
 
 
@@ -48,7 +49,7 @@ int main() {
 	std::vector<Passenger> testData(std::begin(data) + splitPoint, std::end(data));
 
 	//Train and evaluate a single decision tree
-	DecisionTree tree(7, 3, 3);
+	DecisionTree tree(5, 3, 3);
 	tree.train(trainData);
 	int correct = 0;
 	for (const auto& p : testData) {
@@ -57,8 +58,14 @@ int main() {
 	std::cout << "Decision Tree Accuracy: " << (double)(correct / (double)testData.size()) << "\n";
 
 	//Train and evaluate random forest
-	RandomForest forest(100, 7, 3, 3, std::sqrt(trainData.size()));
+	RandomForest forest(100, 5, 3, 3, std::sqrt(trainData.size()));
 	forest.train(trainData);
+
+	auto importance = forest.computeFeatureImportances();
+	for (const auto& [feature, score] : importance) {
+		std::cout << "Feature " << feature << ": " << std::fixed << std::setprecision(4) << score << '\n';
+	}
+
 	double randomForestAccuracy = forest.evaluate(testData);
 	std::cout << "Random Forest Accuracy: " << randomForestAccuracy << std::endl;
 	return 0;

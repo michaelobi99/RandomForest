@@ -78,6 +78,7 @@ private:
     int minSamplesSplit;
     int minSamplesLeaf;
     double featureSampleRatio;
+    std::unordered_map<int, double> featureImportance;
 
     //Calculate Gini impurity
     double calculateGini(const std::vector<bool>& labels) {
@@ -247,6 +248,8 @@ private:
                 }
             }
         }
+        double gain = parentGini - bestGini;
+        featureImportance[bestFeature] += gain;
 
         // Only return if there's actual gain
         if (bestGini < parentGini) {
@@ -349,6 +352,7 @@ public:
         minSamplesSplit = other.minSamplesSplit;
         minSamplesLeaf = other.minSamplesLeaf;
         featureSampleRatio = other.featureSampleRatio;
+        featureImportance = other.featureImportance;
     }
 
     DecisionTree(DecisionTree&& other) {
@@ -361,6 +365,8 @@ public:
         minSamplesSplit = std::move(other.minSamplesSplit);
         minSamplesLeaf = std::move(other.minSamplesLeaf);
         featureSampleRatio = std::move(other.featureSampleRatio);
+        featureImportance = std::move(other.featureImportance);
+
     }
 
     DecisionTree operator=(const DecisionTree& other) {
@@ -372,6 +378,7 @@ public:
         minSamplesSplit = other.minSamplesSplit;
         minSamplesLeaf = other.minSamplesLeaf;
         featureSampleRatio = other.featureSampleRatio;
+        featureImportance = other.featureImportance;
         return *this;
     }
 
@@ -385,6 +392,7 @@ public:
         minSamplesSplit = std::move(other.minSamplesSplit);
         minSamplesLeaf = std::move(other.minSamplesLeaf);
         featureSampleRatio = std::move(other.featureSampleRatio);
+        featureImportance = std::move(other.featureImportance);
         return *this;
     }
 
@@ -422,19 +430,8 @@ public:
         }
         return node ? node->leafClass : false;
     }
-};
 
-//// Select subset of features
-//int totalFeatures = 7;
-//int nFeatures = std::max(1, (int)std::round(featureSampleRatio * totalFeatures));
-//
-//// Randomly shuffle and pick first nFeatures
-//std::vector<int> allFeatures(totalFeatures);
-//std::iota(allFeatures.begin(), allFeatures.end(), 0);
-//std::shuffle(allFeatures.begin(), allFeatures.end(), rng);
-//std::vector<int> features(allFeatures.begin(), allFeatures.begin() + nFeatures);
-//
-//// Try only the selected features
-//for (int featureIdx : features) {
-//    // your existing split evaluation code...
-//}
+    std::unordered_map<int, double> getFeatureImportance() const {
+        return featureImportance;
+    }
+};
