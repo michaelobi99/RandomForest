@@ -56,19 +56,19 @@ struct Passenger {
 
 
 struct TreeNode {
-	int featureIdx; //Feature index used for splitting (-1 for leaf)
-	double splitValue; //split threshold for numerical features
-	std::string splitCategory; //for categorical splits
-	bool isLeaf;
-	bool leafClass; //class prediction if leaf
-	TreeNode* left;
-	TreeNode* right;
-	TreeNode() : featureIdx(-1), splitValue(0), isLeaf(false), leafClass(false), left(nullptr), right(nullptr) {}
-	~TreeNode() {
+    int featureIdx; //Feature index used for splitting (-1 for leaf)
+    double splitValue; //split threshold for numerical features
+    std::string splitCategory; //for categorical splits
+    bool isLeaf;
+    bool leafClass; //class prediction if leaf
+    TreeNode* left;
+    TreeNode* right;
+    TreeNode() : featureIdx(-1), splitValue(0), isLeaf(false), leafClass(false), left(nullptr), right(nullptr) {}
+    ~TreeNode() {
         if (left) delete left;
-		if (right) delete right;
+        if (right) delete right;
         left = right = nullptr;
-	}
+    }
 };
 
 class DecisionTree {
@@ -146,6 +146,8 @@ private:
         }
         double parentGini = calculateGini(currentLabels);
 
+        if (featureSampleRatio > 1.0) featureSampleRatio = 1.0; //prevent failure incase a wrong value is passed.
+
         int nFeatures = std::max(1, (int)std::round(featureSampleRatio * 7));
 
         std::vector<int> featureIndices(7);
@@ -155,7 +157,7 @@ private:
         std::vector<int> chosenFeatures(std::begin(featureIndices), std::begin(featureIndices) + nFeatures);
 
 
-        // Try all features
+        // Try features
         for (int featureIdx : chosenFeatures) {
             // For numerical features
             if (featureIdx == 0 || featureIdx == 2 || featureIdx == 3 || featureIdx == 4 || featureIdx == 5) {
@@ -342,12 +344,12 @@ private:
 public:
     DecisionTree(int maxDepth = 5, int minSamplesSplit = 2, int minSamplesLeaf = 1, double featureSampleRatio = 1.0) :
         root(nullptr), maxDepth(maxDepth), minSamplesSplit(minSamplesSplit), minSamplesLeaf(minSamplesLeaf), featureSampleRatio(featureSampleRatio) {}
-    
+
     DecisionTree(const DecisionTree& other) {
-        if (this != &other) {
-            if (!other.root) root = nullptr;
-            else copyTree(root, other.root);
-        }
+        if (!other.root)
+            root = nullptr;
+        else
+            copyTree(root, other.root);
         maxDepth = other.maxDepth;
         minSamplesSplit = other.minSamplesSplit;
         minSamplesLeaf = other.minSamplesLeaf;
@@ -356,24 +358,19 @@ public:
     }
 
     DecisionTree(DecisionTree&& other) {
-        if (this != &other) {
-            if (!other.root) root = nullptr;
-            root = other.root;
-            other.root = nullptr;
-        }
+        std::swap(root, other.root);
         maxDepth = std::move(other.maxDepth);
         minSamplesSplit = std::move(other.minSamplesSplit);
         minSamplesLeaf = std::move(other.minSamplesLeaf);
         featureSampleRatio = std::move(other.featureSampleRatio);
         featureImportance = std::move(other.featureImportance);
-
     }
 
     DecisionTree operator=(const DecisionTree& other) {
-        if (this != &other) {
-            if (!other.root) root = nullptr;
-            else copyTree(root, other.root);
-        }
+        if (!other.root)
+            root = nullptr;
+        else
+            copyTree(root, other.root);
         maxDepth = other.maxDepth;
         minSamplesSplit = other.minSamplesSplit;
         minSamplesLeaf = other.minSamplesLeaf;
@@ -383,11 +380,7 @@ public:
     }
 
     DecisionTree operator=(DecisionTree&& other) {
-        if (this != &other) {
-            if (!other.root) root = nullptr;
-            root = other.root;
-            other.root = nullptr;
-        }
+        std::swap(root, other.root);
         maxDepth = std::move(other.maxDepth);
         minSamplesSplit = std::move(other.minSamplesSplit);
         minSamplesLeaf = std::move(other.minSamplesLeaf);
@@ -404,8 +397,8 @@ public:
         std::vector<int> indices(data.size());
         std::iota(std::begin(indices), std::end(indices), 0);
         root = buildTree(data, indices, 0);
-       /* std::cout << "Tree depth: " << treeDepth(root)
-            << ", Leaves: " << countLeaves(root) << "\n";*/
+        /* std::cout << "Tree depth: " << treeDepth(root)
+             << ", Leaves: " << countLeaves(root) << "\n";*/
     }
 
     bool predict(const Passenger& p) const {
