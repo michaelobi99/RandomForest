@@ -79,4 +79,27 @@ public:
 		}
 		return total;
 	}
+
+	void save(const std::string& model_file) {
+		std::fstream file(model_file, std::ios::out | std::ios::binary);
+		file.write(reinterpret_cast<const char*>(&nTrees), sizeof(nTrees));
+		for (DecisionTree& tree : trees) {
+			tree.save(model_file);
+		}
+		file.close();
+	}
+
+	void load(const std::string& model_file) {
+		std::fstream file(model_file, std::ios::in | std::ios::binary);
+		file.read(reinterpret_cast<char*>(&nTrees), sizeof(nTrees));
+		if (nTrees > 0) {
+			trees.reserve(nTrees);
+			for (int i{ 0 }; i < nTrees; ++i) {
+				DecisionTree tree;
+				tree.load(model_file);
+				trees.push_back(tree);
+			}
+		}
+		file.close();
+	}
 };

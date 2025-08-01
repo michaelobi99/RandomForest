@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <unordered_map>
 #include <numeric>
+#include <fstream>
 
 //Passenger data structure
 struct Passenger {
@@ -64,21 +65,19 @@ struct TreeNode {
     TreeNode* left;
     TreeNode* right;
     TreeNode() : featureIdx(-1), splitValue(0), isLeaf(false), leafClass(false), left(nullptr), right(nullptr) {}
-    ~TreeNode() {
-        if (left) delete left;
-        if (right) delete right;
-        left = right = nullptr;
-    }
+    ~TreeNode() {}
 };
+
 
 class DecisionTree {
 private:
-    TreeNode* root;
     int maxDepth;
     int minSamplesSplit;
     int minSamplesLeaf;
     double featureSampleRatio;
     std::unordered_map<int, double> featureImportance;
+    TreeNode* root;
+
 
     //Calculate Gini impurity
     double calculateGini(const std::vector<bool>& labels) {
@@ -341,6 +340,66 @@ private:
         }
     }
 
+    void destroy(TreeNode*& node) {
+        if (node != nullptr) {
+            destroy(node->left);
+            destroy(node->right);
+            delete node;
+            node = nullptr;
+        }
+    }
+
+    void serialize(std::fstream& model_file, TreeNode* node) {
+        // Handle nullptr nodes
+        if (node == nullptr) {
+            bool is_null = true;
+            model_file.write(reinterpret_cast<const char*>(&is_null), sizeof(is_null));
+            return;
+        }
+        // Mark this node as not null
+        bool is_null = false;
+        model_file.write(reinterpret_cast<const char*>(&is_null), sizeof(is_null));
+        model_file.write(reinterpret_cast<const char*>(&node->featureIdx), sizeof(node->featureIdx));
+        model_file.write(reinterpret_cast<const char*>(&node->splitValue), sizeof(node->splitValue));
+        size_t s = node->splitCategory.size();
+        model_file.write(reinterpret_cast<const char*>(&s), sizeof(s));
+        if (s > 0) {
+            model_file.write(node->splitCategory.c_str(), s);
+        }
+        model_file.write(reinterpret_cast<const char*>(&node->isLeaf), sizeof(node->isLeaf));
+        model_file.write(reinterpret_cast<const char*>(&node->leafClass), sizeof(node->leafClass));
+        //serialize children recursively
+        if (!node->isLeaf) {
+            serialize(model_file, node->left);
+            serialize(model_file, node->right);
+        }
+    }
+
+    TreeNode* deserialize(std::fstream& model_file) {
+        bool is_null = false;
+        model_file.read(reinterpret_cast<char*>(&is_null), sizeof(is_null));
+        if (is_null) {
+            return nullptr;
+        }
+        TreeNode* node = new TreeNode();
+        model_file.read(reinterpret_cast<char*>(&node->featureIdx), sizeof(node->featureIdx));
+        model_file.read(reinterpret_cast<char*>(&node->splitValue), sizeof(node->splitValue));
+        size_t s;
+        model_file.read(reinterpret_cast<char*>(&s), sizeof(s));
+        if (s > 0) {
+            node->splitCategory.resize(s);
+            model_file.read(reinterpret_cast<char*>(&node->splitCategory[0]), s);
+        }
+        model_file.read(reinterpret_cast<char*>(&node->isLeaf), sizeof(node->isLeaf));
+        model_file.read(reinterpret_cast<char*>(&node->leafClass), sizeof(node->leafClass));
+        //deserialize children recursively
+        if (!node->isLeaf) {
+            node->left = deserialize(model_file);
+            node->right = deserialize(model_file);
+        }
+        return node;
+    }
+    
 public:
     DecisionTree(int maxDepth = 5, int minSamplesSplit = 2, int minSamplesLeaf = 1, double featureSampleRatio = 1.0) :
         root(nullptr), maxDepth(maxDepth), minSamplesSplit(minSamplesSplit), minSamplesLeaf(minSamplesLeaf), featureSampleRatio(featureSampleRatio) {}
@@ -357,15 +416,6 @@ public:
         featureImportance = other.featureImportance;
     }
 
-    DecisionTree(DecisionTree&& other) {
-        std::swap(root, other.root);
-        maxDepth = std::move(other.maxDepth);
-        minSamplesSplit = std::move(other.minSamplesSplit);
-        minSamplesLeaf = std::move(other.minSamplesLeaf);
-        featureSampleRatio = std::move(other.featureSampleRatio);
-        featureImportance = std::move(other.featureImportance);
-    }
-
     DecisionTree operator=(const DecisionTree& other) {
         if (!other.root)
             root = nullptr;
@@ -379,18 +429,8 @@ public:
         return *this;
     }
 
-    DecisionTree operator=(DecisionTree&& other) {
-        std::swap(root, other.root);
-        maxDepth = std::move(other.maxDepth);
-        minSamplesSplit = std::move(other.minSamplesSplit);
-        minSamplesLeaf = std::move(other.minSamplesLeaf);
-        featureSampleRatio = std::move(other.featureSampleRatio);
-        featureImportance = std::move(other.featureImportance);
-        return *this;
-    }
-
     ~DecisionTree() {
-        delete root;
+        destroy(root);
     }
 
     void train(const std::vector<Passenger>& data) {
@@ -426,5 +466,25 @@ public:
 
     std::unordered_map<int, double> getFeatureImportance() const {
         return featureImportance;
+    }
+
+    void save(const std::string& model_file) {
+        std::fstream file(model_file, std::ios::out | std::ios::binary);
+        file.write(reinterpret_cast<const char*>(&maxDepth), sizeof(maxDepth));
+        file.write(reinterpret_cast<const char*>(&minSamplesSplit), sizeof(minSamplesSplit));
+        file.write(reinterpret_cast<const char*>(&minSamplesLeaf), sizeof(minSamplesLeaf));
+        file.write(reinterpret_cast<const char*>(&featureSampleRatio), sizeof(featureSampleRatio));
+        serialize(file, root);
+        file.close();
+    }
+
+    void load(const std::string& model_file) {
+        std::fstream file(model_file, std::ios::in | std::ios::binary);
+        file.read(reinterpret_cast<char*>(&maxDepth), sizeof(maxDepth));
+        file.read(reinterpret_cast<char*>(&minSamplesSplit), sizeof(minSamplesSplit));
+        file.read(reinterpret_cast<char*>(&minSamplesLeaf), sizeof(minSamplesLeaf));
+        file.read(reinterpret_cast<char*>(&featureSampleRatio), sizeof(featureSampleRatio));
+        root = deserialize(file);
+        file.close();
     }
 };
