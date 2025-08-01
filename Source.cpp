@@ -53,7 +53,7 @@ int main() {
                                     std::end(data));
 
     // Train and evaluate a single decision tree
-    DecisionTree tree(5, 2, 2);
+    DecisionTree tree(7, 2, 2);
     tree.train(trainData);
 
     int correct = 0;
@@ -79,7 +79,7 @@ int main() {
         << (double)(correct / (double)testData.size()) << "\n";
 
   
-    RandomForest forest(100, 5, 2, 2, 0.7);
+    RandomForest forest(100, 7, 2, 2, 0.7);
     forest.train(trainData);
 
     auto importance = forest.computeFeatureImportances();

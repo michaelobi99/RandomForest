@@ -477,6 +477,13 @@ public:
         serialize(file, root);
         file.close();
     }
+    void save(std::fstream& model_file_obj) {
+        model_file_obj.write(reinterpret_cast<const char*>(&maxDepth), sizeof(maxDepth));
+        model_file_obj.write(reinterpret_cast<const char*>(&minSamplesSplit), sizeof(minSamplesSplit));
+        model_file_obj.write(reinterpret_cast<const char*>(&minSamplesLeaf), sizeof(minSamplesLeaf));
+        model_file_obj.write(reinterpret_cast<const char*>(&featureSampleRatio), sizeof(featureSampleRatio));
+        serialize(model_file_obj, root);
+    }
 
     void load(const std::string& model_file) {
         std::fstream file(model_file, std::ios::in | std::ios::binary);
@@ -486,5 +493,12 @@ public:
         file.read(reinterpret_cast<char*>(&featureSampleRatio), sizeof(featureSampleRatio));
         root = deserialize(file);
         file.close();
+    }
+    void load(std::fstream& model_file_obj) {
+        model_file_obj.read(reinterpret_cast<char*>(&maxDepth), sizeof(maxDepth));
+        model_file_obj.read(reinterpret_cast<char*>(&minSamplesSplit), sizeof(minSamplesSplit));
+        model_file_obj.read(reinterpret_cast<char*>(&minSamplesLeaf), sizeof(minSamplesLeaf));
+        model_file_obj.read(reinterpret_cast<char*>(&featureSampleRatio), sizeof(featureSampleRatio));
+        root = deserialize(model_file_obj);
     }
 };
